@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 230">
+  <rect width="520" height="230" rx="28" fill="#191c27"/>
+  <circle cx="248" cy="116" r="86" fill="none" stroke="#272a38" stroke-width="15"/>
+  <path d="M248 30a86 86 0 1 1-73 40" fill="none" stroke="#aa96ff" stroke-linecap="round" stroke-width="15"/>
+  <text x="248" y="110" fill="#f4f4f7" font-family="sans-serif" font-size="29" font-weight="700" text-anchor="middle">NIVEAU 4</text>
+  <text x="248" y="137" fill="#9a9eae" font-family="sans-serif" font-size="12" text-anchor="middle">Plus régulier, à ton rythme</text>
+  <g><rect x="370" y="50" width="94" height="112" rx="16" fill="#12141d" stroke="#ffffff" stroke-opacity=".1"/><text x="417" y="94" fill="#f1bd76" font-size="30" text-anchor="middle">🔥</text><text x="417" y="119" fill="#f4f4f7" font-family="sans-serif" font-size="11" font-weight="700" text-anchor="middle">7 jours</text><text x="417" y="139" fill="#9a9eae" font-family="sans-serif" font-size="9" text-anchor="middle">de constance</text></g>
+  <circle cx="102" cy="57" r="5" fill="#70d7ae"/><circle cx="120" cy="174" r="3" fill="#aa96ff"/><circle cx="86" cy="129" r="3" fill="#f1bd76"/>
+</svg>

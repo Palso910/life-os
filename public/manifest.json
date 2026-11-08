@@ -1,0 +1,16 @@
+{
+  "id": "/",
+  "name": "LifeOS — avance à ton rythme",
+  "short_name": "LifeOS",
+  "description": "Tes habitudes, tes projets et ton équilibre.",
+  "lang": "fr-FR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b0c12",
+  "theme_color": "#0b0c12",
+  "icons": [
+    { "src": "/images/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
