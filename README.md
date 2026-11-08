@@ -110,4 +110,6 @@ Ne committe jamais `.env.local`; il est ignoré par `.gitignore`.
 
 Les mises à jour sont écrites dans le cache local avant la synchronisation. Les conflits d’une même habitude/date sont résolus par `updated_at` (dernier écrit gagnant); les suppressions de tâches, notes et échéances sont conservées comme tombstones pour éviter leur réapparition sur un appareil resté hors ligne. Les dates de suivi sont des dates civiles `YYYY-MM-DD`; la génération de la heatmap annuelle utilise un compteur de jours et ne soustrait pas des millisecondes.
 
+Dans le widget **À faire**, choisis une date puis répartis les tâches entre les blocs **Matin**, **Midi** et **Soir**. Les tâches existantes sans date restent visibles aujourd’hui dans le bloc Matin. La date et le bloc sont conservés dans le champ de date déjà synchronisé, sans migration supplémentaire de la base Supabase.
+
 Le JSON exporté inclut l’historique complet, les tâches, les échéances, les notes, les sessions de focus, réglages et images. Les fichiers d’image personnalisés ajoutés depuis Réglages sont propres à l’appareil; remplace les slots versionnés dans `public/images/` si tu souhaites les distribuer à tous les appareils.

@@ -36,7 +36,13 @@ import { useLife } from "@/lib/storage/life-provider";
 import type { Accent, ChartScale, Difficulty, Habit, HabitLog, LifeState } from "@/lib/domain/types";
 
 type Page = "aujourdhui" | "habitudes" | "progression" | "donnees" | "reglages";
+type TaskPeriod = "matin" | "midi" | "soir";
 
+const TASK_PERIODS: { id: TaskPeriod; label: string; icon: string; hour: number }[] = [
+  { id: "matin", label: "Matin", icon: "☀", hour: 8 },
+  { id: "midi", label: "Midi", icon: "◐", hour: 13 },
+  { id: "soir", label: "Soir", icon: "☾", hour: 19 },
+];
 const NAV: { id: Page; label: string; icon: string; href: string }[] = [
   { id: "aujourdhui", label: "Aujourd’hui", icon: "⌂", href: "/" },
   { id: "habitudes", label: "Habitudes", icon: "◷", href: "/habitudes" },
@@ -57,6 +63,18 @@ const TITLES: Record<Page, { title: string; subtitle: string; eyebrow: string }>
 
 function shortDate(value: string): string {
   return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(parseDateKey(value));
+}
+
+function taskPeriod(dueAt: string | null): TaskPeriod {
+  if (!dueAt) return "matin";
+  const hour = new Date(dueAt).getUTCHours();
+  return hour < 11 ? "matin" : hour < 17 ? "midi" : "soir";
+}
+
+function taskDueAt(day: string, period: TaskPeriod): string {
+  const hour = TASK_PERIODS.find((item) => item.id === period)?.hour ?? 8;
+  // Keep the day and period in the existing synced timestamp; no schema change is needed.
+  return `${day}T${String(hour).padStart(2, "0")}:00:00.000Z`;
 }
 
 function makeId(): string {
@@ -219,6 +237,7 @@ export function AppShell({ page }: { page: Page }) {
   const [authMessage, setAuthMessage] = useState("");
   const [celebration, setCelebration] = useState<{ icon: string; title: string; detail: string } | null>(null);
   const [selectedDay, setSelectedDay] = useState(localToday());
+  const [taskDay, setTaskDay] = useState(localToday());
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [habitView, setHabitView] = useState<"semaine" | "mois" | "annee">("semaine");
@@ -227,7 +246,7 @@ export function AppShell({ page }: { page: Page }) {
   const [newTarget, setNewTarget] = useState(7);
   const [newDifficulty, setNewDifficulty] = useState<Difficulty>("normale");
   const [newReminder, setNewReminder] = useState("");
-  const [newTask, setNewTask] = useState("");
+  const [newTasks, setNewTasks] = useState<Record<TaskPeriod, string>>({ matin: "", midi: "", soir: "" });
   const [newDeadline, setNewDeadline] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
   const [reflectionDraft, setReflectionDraft] = useState("");
@@ -293,6 +312,7 @@ export function AppShell({ page }: { page: Page }) {
   const level = levelForXp(xp);
   const bestStreak = Math.max(0, ...activeHabits.map((habit) => streakForHabit(habit.id, state.logs)));
   const openTasks = state.tasks.filter((task) => !task.deletedAt);
+  const tasksForDay = openTasks.filter((task) => (task.dueAt?.slice(0, 10) ?? localToday()) === taskDay);
   const deadlines = state.deadlines.filter((item) => !item.deletedAt).sort((a, b) => a.dueAt.localeCompare(b.dueAt));
   const currentMonth = new Date();
   currentMonth.setDate(1);
@@ -345,16 +365,16 @@ export function AppShell({ page }: { page: Page }) {
     notify("Habitude ajoutée à tes routines.");
   }
 
-  function handleAddTask(event: FormEvent<HTMLFormElement>) {
+  function handleAddTask(event: FormEvent<HTMLFormElement>, period: TaskPeriod) {
     event.preventDefault();
-    const title = newTask.trim();
+    const title = newTasks[period].trim();
     if (!title) return;
     const now = new Date().toISOString();
     update((current) => ({
       ...current,
-      tasks: [{ id: makeId(), title, done: false, dueAt: null, deletedAt: null, updatedAt: now }, ...current.tasks],
+      tasks: [{ id: makeId(), title, done: false, dueAt: taskDueAt(taskDay, period), deletedAt: null, updatedAt: now }, ...current.tasks],
     }));
-    setNewTask("");
+    setNewTasks((current) => ({ ...current, [period]: "" }));
     notify("Tâche ajoutée.");
   }
 
@@ -604,6 +624,7 @@ export function AppShell({ page }: { page: Page }) {
 
   return (
     <>
+      <FxLayers active={state.settings.fx} />
       <div className={`app-shell ${!state.settings.fx ? "fx-off" : ""}`}>
         <aside className="sidebar">
           <Link className="brand" href="/" aria-label="LifeOS, accueil">
@@ -692,12 +713,26 @@ export function AppShell({ page }: { page: Page }) {
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}><Link href="/habitudes" className="tiny">Voir tout l’historique →</Link></div>
       </Panel>,
       taches: <Panel className="widget" key="taches">
-        <div className="card-head"><div><h2 className="card-title">À faire</h2><p className="card-subtitle">{openTasks.filter((task) => task.done).length}/{openTasks.length} terminées</p></div><span className="tag">Aujourd’hui</span></div>
-        {openTasks.length ? <div>{openTasks.slice(0, 6).map((task) => <div className="task-item" key={task.id}>
-          <button className={`task-toggle ${task.done ? "done" : ""}`} aria-label={`${task.done ? "Réouvrir" : "Terminer"} ${task.title}`} onClick={() => toggleTask(task.id)}>{task.done ? "✓" : ""}</button>
-          <span className={`task-copy ${task.done ? "done" : ""}`}>{task.title}</span><button className="task-delete" aria-label={`Supprimer ${task.title}`} onClick={() => deleteTask(task.id)}>×</button>
-        </div>)}</div> : <p className="tiny">Aucune tâche pour le moment.</p>}
-        <form className="form-row" onSubmit={handleAddTask} style={{ marginTop: 7 }}><input className="input" placeholder="Ajouter une tâche…" value={newTask} onChange={(event) => setNewTask(event.target.value)} aria-label="Nouvelle tâche" /><button className="icon-button" type="submit" aria-label="Ajouter la tâche">＋</button></form>
+        <div className="card-head task-day-head">
+          <div><h2 className="card-title">Ma journée</h2><p className="card-subtitle">{tasksForDay.filter((task) => task.done).length}/{tasksForDay.length} tâches terminées</p></div>
+          <label className="task-date-control"><span className="sr-only">Choisir le jour des tâches</span><input className="input" type="date" value={taskDay} onChange={(event) => {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(event.target.value)) setTaskDay(event.target.value);
+          }} /></label>
+        </div>
+        <div className="task-period-list">{TASK_PERIODS.map((period) => {
+          const periodTasks = tasksForDay.filter((task) => taskPeriod(task.dueAt) === period.id);
+          return <section className="task-period" key={period.id} aria-label={`Tâches du ${period.label.toLowerCase()}`}>
+            <div className="task-period-heading"><span className="task-period-icon" aria-hidden="true">{period.icon}</span><h3>{period.label}</h3><span className="task-period-count">{periodTasks.filter((task) => task.done).length}/{periodTasks.length}</span></div>
+            {periodTasks.length ? <div>{periodTasks.map((task) => <div className="task-item" key={task.id}>
+              <button className={`task-toggle ${task.done ? "done" : ""}`} aria-label={`${task.done ? "Réouvrir" : "Terminer"} ${task.title}`} aria-pressed={task.done} onClick={() => toggleTask(task.id)}>{task.done ? "✓" : ""}</button>
+              <span className={`task-copy ${task.done ? "done" : ""}`}>{task.title}</span><button className="task-delete" aria-label={`Supprimer ${task.title}`} onClick={() => deleteTask(task.id)}>×</button>
+            </div>)}</div> : <p className="task-period-empty">Rien de prévu pour le moment.</p>}
+            <form className="form-row task-period-form" onSubmit={(event) => handleAddTask(event, period.id)}>
+              <input className="input" placeholder={`Ajouter une tâche…`} value={newTasks[period.id]} onChange={(event) => setNewTasks((current) => ({ ...current, [period.id]: event.target.value }))} aria-label={`Nouvelle tâche pour le ${period.label.toLowerCase()}`} />
+              <button className="icon-button" type="submit" aria-label={`Ajouter au bloc ${period.label.toLowerCase()}`}>＋</button>
+            </form>
+          </section>;
+        })}</div>
       </Panel>,
       focus: <div className="widget" key="focus"><FocusWidget onNotice={notify} /></div>,
       calendrier: <Panel className="widget" key="calendrier">
@@ -1071,6 +1106,24 @@ function Onboarding({ onFinish }: { onFinish: () => void }) {
     </div>
     <button className="button button-quiet" style={{ marginTop: 10 }} onClick={onFinish}>Passer l’introduction</button>
   </div></div>;
+}
+
+function FxLayers({ active }: { active: boolean }) {
+  if (!active) return null;
+  return <div className="fx-layers" aria-hidden="true">
+    <div className="fx-aurora"><span /><span /><span /></div>
+    <div className="fx-stars">{Array.from({ length: 34 }, (_, index) => {
+      const size = 1 + (index % 3) * .65;
+      return <span key={index} className="fx-star" style={{
+        left: `${(index * 37 + 11) % 100}%`,
+        top: `${(index * 53 + 7) % 110}%`,
+        width: `${size}px`,
+        height: `${size}px`,
+        animationDuration: `${11 + (index * 7) % 13}s`,
+        animationDelay: `${-((index * 3) % 20)}s`,
+      }} />;
+    })}</div>
+  </div>;
 }
 
 function Confetti({ active }: { active: boolean }) {
